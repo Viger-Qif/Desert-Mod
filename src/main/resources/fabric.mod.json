@@ -1,0 +1,41 @@
+{
+	"schemaVersion": 1,
+	"id": "desertmod",
+	"version": "${version}",
+	"name": "Desert Mod",
+	"description": "This is an atmospheric mod for desert project",
+	"authors": [
+		"Mxnder"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/desertmod/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"net.mxnder.desertmod.DesertMod"
+		],
+		"client": [
+			"net.mxnder.desertmod.client.DesertModClient"
+		],
+		"fabric-datagen": [
+			"net.mxnder.desertmod.client.DesertModDataGenerator"
+		]
+	},
+	"mixins": [
+		"desertmod.mixins.json",
+		{
+			"config": "desertmod.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
