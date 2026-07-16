@@ -4,6 +4,11 @@ import net.fabricmc.api.ModInitializer;
 
 import net.minecraft.resources.Identifier;
 
+import net.mxnder.desertmod.block.ModBlocks;
+import net.mxnder.desertmod.blockentity.ModBlockEntities;
+import net.mxnder.desertmod.command.ModCommands;
+import net.mxnder.desertmod.creativemodetab.ModeCreativeModeTabs;
+import net.mxnder.desertmod.item.ModItems;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +18,12 @@ public class DesertMod implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		LOGGER.info("Hello Fabric world!");
+		ModeCreativeModeTabs.registerModCreativeModeTabs();
+
+		ModBlocks.registerModBlocks();
+		ModItems.registerModItems();
+		ModBlockEntities.registerModBlockEntities();
+		ModCommands.register();
 	}
 
 	public static Identifier id(String path) {

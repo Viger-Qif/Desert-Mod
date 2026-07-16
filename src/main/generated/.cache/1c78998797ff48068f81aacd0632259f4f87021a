@@ -1,0 +1,10 @@
+// 26.2	-999999999-01-01T00:00:00	Desert Mod/Model Definitions
+7e0aa4e737df3816a5703baa845e55d13e0bc878 assets/desertmod/blockstates/kifi_brazier.json
+01e44768482404c9f6a54d01ca582cfd6dbd00a7 assets/desertmod/items/icon_tab.json
+fc17ab9b966768f6087af12ec887f17fa7204cad assets/desertmod/items/kifi.json
+f9298c67466604a3192c2f2200d5449e6e382ad1 assets/desertmod/items/kifi_brazier.json
+12f7918c7141365a10b92a9c05bc276b5feddf51 assets/desertmod/items/kifi_raw.json
+4a930fbef0cca7fa5230401b7d2cefb28502187c assets/desertmod/models/block/kifi_brazier.json
+dff35467920bb117aa4d87a035cbb46c6c75e3f4 assets/desertmod/models/item/icon_tab.json
+453bef9aa1b461846c07f42219502d2a6bdeed11 assets/desertmod/models/item/kifi.json
+81ed5663107aca01064695ed038bf348e308a2c6 assets/desertmod/models/item/kifi_raw.json

@@ -1,0 +1,14 @@
+{
+  "item.desertmod.kifi": "Kifi",
+  "item.desertmod.kifi_raw": "Raw Kifi",
+  "item.desertmod.icon_tab": "Icon of tab",
+  "creativemodetab.desertmod.desert_mod": "Desert Mod",
+
+  "block.desertmod.kifi_brazier": "Kifi Brazier",
+  "item.desertmod.kifi_brazier": "Kifi Brazier",
+
+  "message.desertmod.kifi_brazier.bound": "Braziers linked into a group",
+  "message.desertmod.kifi_brazier.bind_failed": "No valid cross of 4 braziers found nearby",
+  "message.desertmod.kifi_brazier.target_set": "Teleport destination saved",
+  "message.desertmod.kifi_brazier.not_master": "Only the master brazier (north one) can be configured"
+}

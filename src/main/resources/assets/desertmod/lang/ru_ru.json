@@ -1,0 +1,15 @@
+{
+  "item.desertmod.kifi": "Кифи",
+  "item.desertmod.kifi_raw": "Сырое Кифи",
+  "item.desertmod.icon_tab": "Иконка вкладки",
+  "creativemodetab.desertmod.desert_mod": "Мод Пустыни",
+
+  "block.desertmod.kifi_brazier": "Жаровня Кифи",
+  "item.desertmod.kifi_brazier": "Жаровня Кифи",
+
+  "message.desertmod.kifi_brazier.bound": "Жаровни объединены в группу",
+  "message.desertmod.kifi_brazier.bind_failed": "Рядом не найден правильный крест из 4 жаровен",
+  "message.desertmod.kifi_brazier.target_set": "Точка телепортации сохранена",
+  "message.desertmod.kifi_brazier.rebound": "Жаровни перепривязаны!",
+  "message.desertmod.kifi_brazier.not_master": "Настраивать можно только жаровню-мастера (северную)"
+}

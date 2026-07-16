@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "A": "minecraft:sandstone_slab",
+    "B": "minecraft:amethyst_shard",
+    "C": "minecraft:ender_pearl",
+    "D": "minecraft:fire_charge",
+    "E": "minecraft:sandstone",
+    "F": "minecraft:iron_ingot"
+  },
+  "pattern": [
+    "ABA",
+    "CDC",
+    "EFE"
+  ],
+  "result": {
+    "id": "desertmod:kifi_brazier"
+  }
+}
