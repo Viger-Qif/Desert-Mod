@@ -3,8 +3,7 @@
 	"parent": "minecraft:block/block",
 	"texture_size": [64, 64],
 	"textures": {
-		"1": "desertmod:block/kifi_brazier_texture",
-		"particle": "desertmod:block/kifi_brazier_texture"
+		"1": "desertmod:block/kifi_brazier_texture"
 	},
 	"elements": [
 		{

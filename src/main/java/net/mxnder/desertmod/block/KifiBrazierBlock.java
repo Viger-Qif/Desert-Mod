@@ -9,6 +9,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
@@ -59,7 +60,7 @@ public class KifiBrazierBlock extends BaseEntityBlock {
     // Формат: Shapes.box(minX, minY, minZ, maxX, maxY, maxZ)
     // Значения от 0.0 до 16.0.
     // Пример для жаровни: чуть уже полного блока (2 пикселя с краёв) и высотой 10 пикселей.
-    private static final VoxelShape BRAZIER_SHAPE = Shapes.box(0, 0, 0, 1.0, 0.685, 1.0);
+    private static final VoxelShape BRAZIER_SHAPE = Block.box(0, 0, 0, 16.0, 11.0, 16.0);
 
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
