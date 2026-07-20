@@ -24,9 +24,6 @@ public class DesertMod implements ModInitializer {
 		ModItems.registerModItems();
 		ModBlockEntities.registerModBlockEntities();
 		ModCommands.register();
-	}
-
-	public static Identifier id(String path) {
-		return Identifier.fromNamespaceAndPath(MOD_ID, path);
+		TeleportFxScheduler.register();
 	}
 }

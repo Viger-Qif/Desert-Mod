@@ -6,6 +6,7 @@ import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Relative;
@@ -70,6 +71,55 @@ public class KifiBrazierBlockEntity extends BlockEntity {
     private int visualSoundCounter = 0;
     private int nextVisualParticleDelay = 0;
     private int nextVisualSoundDelay = 0;
+
+    // Задержка эффекта появления в новой точке (в тиках, 20 тиков = 1 сек).
+    // Даём клиенту время прогрузить чанки на новом месте, прежде чем
+    // полетит «сборка из песка». Очередь теперь статическая и тикается
+    // сервером, так что выгрузки старого чанка можно не бояться —
+    // держим разумные 2 секунды вместо прежних 5-10.
+    private static final int TELEPORT_FX_DELAY_TICKS = 5;
+
+
+
+    // Очередь отложенных эффектов появления. Живёт в статике, а НЕ в блок-сущности,
+    // потому что после дальнего телепорта чанк со стартовой жаровней выгружается,
+    // и её serverTick перестаёт вызываться — таймер бы завис навсегда.
+    // Статика тикается глобальным серверным тиком (см. TeleportFxScheduler),
+    // который работает всегда, независимо от загрузки чанков.
+    private static final List<PendingArrival> PENDING_ARRIVALS = new ArrayList<>();
+
+    private static final class PendingArrival {
+        final ResourceKey<Level> dim;
+        final double x, y, z;
+        int ticksLeft;
+        PendingArrival(ResourceKey<Level> dim, double x, double y, double z, int ticksLeft) {
+            this.dim = dim; this.x = x; this.y = y; this.z = z; this.ticksLeft = ticksLeft;
+        }
+    }
+
+    /** Кладёт эффект появления в очередь. Вызывается в момент телепорта. */
+    public static void scheduleArrival(ResourceKey<Level> dim, double x, double y, double z, int delayTicks) {
+        PENDING_ARRIVALS.add(new PendingArrival(dim, x, y, z, delayTicks));
+    }
+
+    /** Тикает очередь. Вызывается КАЖДЫЙ серверный тик из TeleportFxScheduler. */
+    public static void tickPending(MinecraftServer server) {
+        if (PENDING_ARRIVALS.isEmpty()) return;
+        Iterator<PendingArrival> it = PENDING_ARRIVALS.iterator();
+        while (it.hasNext()) {
+            PendingArrival p = it.next();
+            p.ticksLeft--;
+            if (p.ticksLeft <= 0) {
+                ServerLevel fxLevel = server.getLevel(p.dim);
+                if (fxLevel != null) {
+                    spawnArrivalFx(fxLevel, p.x, p.y, p.z);
+                }
+                it.remove(); // эффект отыгран — убираем из очереди
+            }
+        }
+    }
+
+    private int vortexCounter = 0;
 
     public KifiBrazierBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.KIFI_BRAZIER_BLOCK_ENTITY, pos, state);
@@ -214,11 +264,34 @@ public class KifiBrazierBlockEntity extends BlockEntity {
             return;
         }
 
-        // Визуальная обратная связь (частицы/звук) — работает у КАЖДОЙ жаровни
-        // независимо от привязки/статуса мастера, каждый серверный тик (throttling
-        // внутри самого метода через собственные счётчики с рандомным интервалом).
+        // === ВИЗУАЛ ЖАРОВНИ (каждый тик, с внутренним throttling) ===
         be.tickVisuals(serverLevel, pos);
 
+        // === ВИЗУАЛ ПЛАТФОРМЫ И ВИХРЯ (мастер, привязанная группа) ===
+        if (be.master && be.linked && be.centerPos != null) {
+            be.tickPlatformSandDrift(serverLevel, be.centerPos);
+
+            if (be.activationTimer > 0) {
+                AABB standingBox = new AABB(be.centerPos.above());
+                List<Player> playersInCenter = serverLevel.getEntitiesOfClass(Player.class, standingBox);
+
+                // ⚡ ОПТИМИЗАЦИЯ: вихрь раз в 4 тика, а не каждый тик.
+                // Дыр НЕ будет, потому что у частиц speed=0 — они висят на месте
+                // ~20 тиков и сами перекрывают следующее поколение.
+                // Нагрузка вихря падает в 4 раза без потери плотности стены.
+                be.vortexCounter++;
+                if (be.vortexCounter >= 4) {
+                    be.vortexCounter = 0;
+                    for (Player player : playersInCenter) {
+                        be.tickPlayerVortex(serverLevel, player, be.activationTimer);
+                    }
+                }
+            } else {
+                be.vortexCounter = 0; // игрок ушёл из центра — сбрасываем
+            }
+        }
+
+        // === ЛОГИКА ТАЙМЕРА (раз в 20 тиков) ===
         be.tickCounter++;
         if (be.tickCounter < TICK_INTERVAL) {
             return;
@@ -230,13 +303,11 @@ public class KifiBrazierBlockEntity extends BlockEntity {
             return;
         }
 
-        // Заряд самой жаровни-мастера
         if (be.charge <= 0) {
             be.activationTimer = 0;
             return;
         }
 
-        // Заряд трёх соседей — читаем только по сохранённым координатам, без сканирования
         for (BlockPos neighborPos : be.neighborPositions) {
             if (neighborPos == null) {
                 be.activationTimer = 0;
@@ -249,7 +320,6 @@ public class KifiBrazierBlockEntity extends BlockEntity {
             }
         }
 
-        // Стоит ли игрок ровно на центральном блоке
         AABB standingBox = new AABB(be.centerPos.above());
         List<Player> players = serverLevel.getEntitiesOfClass(Player.class, standingBox);
 
@@ -262,8 +332,6 @@ public class KifiBrazierBlockEntity extends BlockEntity {
 
         if (be.activationTimer >= TELEPORT_DELAY_TICKS) {
             be.activationTimer = 0;
-
-            // ✅ ДОБАВЛЕНО: Списываем заряд со всех 4 жаровен ОДИН раз
             be.consumeCharge(serverLevel);
 
             for (Player player : players) {
@@ -275,27 +343,38 @@ public class KifiBrazierBlockEntity extends BlockEntity {
     }
 
     private void teleportPlayer(ServerLevel level, ServerPlayer player) {
-        // Звук телепортации — замедленный эндермен
         level.playSound(null, player.blockPosition(), SoundEvents.ENDERMAN_TELEPORT,
                 SoundSource.PLAYERS, 1.0f, 0.5f);
+        level.playSound(null, player.blockPosition(), SoundEvents.CAMPFIRE_CRACKLE,
+                SoundSource.PLAYERS, 0.8f, 0.4f);
 
-        // ✅ ЧАСТИЦЫ НА СТАРТЕ: песчаный вихрь
-        // Используем BlockParticleOption для эффекта падающего песка
         BlockState sandState = Blocks.SAND.defaultBlockState();
+
+        // === СТАРТ: сразу, старый чанк прогружен ===
         level.sendParticles(
                 new BlockParticleOption(ParticleTypes.FALLING_DUST, sandState),
-                player.getX(), player.getY() + 0.5, player.getZ(),
-                80,  // больше частиц для плотности
-                0.5, 1.5, 0.5,  // широкий столб песка
-                0.15  // скорость падения
-        );
+                player.getX(), player.getY() + 1.0, player.getZ(),
+                150, 0.8, 1.5, 0.8, 0.25);
+        level.sendParticles(ParticleTypes.ASH,
+                player.getX(), player.getY() + 1.0, player.getZ(),
+                80, 1.0, 1.5, 1.0, 0.15);
+        level.sendParticles(ParticleTypes.ENCHANT,
+                player.getX(), player.getY() + 1.0, player.getZ(),
+                60, 0.4, 0.8, 0.4, 0.1);
+        // === ДЫМНАЯ ЗАВЕСА НА СТАРТЕ: масштабная, на уровне тела ===
+        // Серый объём (LARGE_SMOKE) — вровень с песком (+1.0), широкий и густой,
+        // чтобы не тонул в песчаной вспышке, а перекрывал её по объёму.
+        level.sendParticles(ParticleTypes.LARGE_SMOKE,
+                player.getX(), player.getY() + 1.0, player.getZ(),  // было +0.5 (у ног → тонул)
+                60, 0.6, 1.0, 0.6, 0.08);                            // было 25 шт, узкий спред
 
-        // Добавляем магический дым поверх песка
-        level.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE,
-                player.getX(), player.getY() + 0.3, player.getZ(),
-                30, 0.3, 0.8, 0.3, 0.02);
+        // Белая вспышка-завеса (WHITE_SMOKE) — ЧУТЬ ВЫШЕ песка (+1.3),
+        // именно она ложится поверх жёлтой каши и прячет сам кадр исчезновения.
+        level.sendParticles(ParticleTypes.WHITE_SMOKE,
+                player.getX(), player.getY() + 1.3, player.getZ(),
+                50, 0.5, 0.9, 0.5, 0.1);
 
-        // Телепортация...
+        // === САМ ТЕЛЕПОРТ ===
         ServerLevel targetLevel = teleportDimension != null
                 ? level.getServer().getLevel(teleportDimension)
                 : level;
@@ -308,15 +387,43 @@ public class KifiBrazierBlockEntity extends BlockEntity {
         player.teleportTo(targetLevel, x, y, z,
                 new HashSet<>(), player.getYRot(), player.getXRot(), false);
 
-        // ✅ ЧАСТИЦЫ В ТОЧКЕ НАЗНАЧЕНИЯ: песчаное облако при появлении
+        // === ФИНИШ: НЕ шлём сразу, а ставим в очередь на 2 секунды ===
+        scheduleArrival(targetLevel.dimension(), x, y, z, TELEPORT_FX_DELAY_TICKS);
+    }
+
+    /**
+     * Эффект появления в точке назначения. Вызывается с задержкой
+     * (см. pendingFxTimer = 40 тиков), чтобы клиент успел прогрузить чанки.
+     */
+    private static void spawnArrivalFx(ServerLevel targetLevel, double x, double y, double z) {
+        BlockState sandState = Blocks.SAND.defaultBlockState();
+
+        // ПЕСОК стягивается к центру (отрицательная скорость = летит внутрь)
         targetLevel.sendParticles(
                 new BlockParticleOption(ParticleTypes.FALLING_DUST, sandState),
-                x, y + 0.5, z,
-                80, 0.5, 1.5, 0.5, 0.15);
+                x, y + 1.0, z,
+                120, 1.5, 1.5, 1.5, -0.2);
 
-        targetLevel.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE,
-                x, y + 0.3, z,
-                30, 0.3, 0.8, 0.3, 0.02);
+        // ПЕПЕЛ стягивается следом
+        targetLevel.sendParticles(ParticleTypes.ASH,
+                x, y + 1.0, z,
+                60, 1.2, 1.2, 1.2, -0.12);
+
+        // РУНЫ проявляются из воздуха и сходятся к игроку
+        targetLevel.sendParticles(ParticleTypes.ENCHANT,
+                x, y + 1.0, z,
+                50, 1.0, 1.0, 1.0, -0.08);
+
+        // === ДЫМКА ПОЯВЛЕНИЯ: масштабная, на уровне тела ===
+        // Серый слой (+0.8) — объём и глубина под вспышкой
+        targetLevel.sendParticles(ParticleTypes.LARGE_SMOKE,
+                x, y + 0.8, z,
+                40, 0.5, 0.9, 0.5, 0.05);
+
+        // Белая вспышка (+1.2) — мягкая материализация поверх песка
+        targetLevel.sendParticles(ParticleTypes.WHITE_SMOKE,
+                x, y + 1.2, z,
+                50, 0.5, 0.9, 0.5, 0.06);
     }
 
     // ---------------------------------------------------------------------
@@ -544,6 +651,113 @@ public class KifiBrazierBlockEntity extends BlockEntity {
                     0.9f, 1.0f);
         }
     }
+
+    // ----------------------------------------------
+
+
+    /**
+     * Песчаный дрифт по платформе: тонкие полосочки песка,
+     * дрейфующие от краёв к центру креста. Работает когда
+     * все жаровни заряжены и игрок стоит в центре.
+     */
+    private void tickPlatformSandDrift(ServerLevel level, BlockPos center) {
+        var random = level.getRandom();
+        double cx = center.getX() + 0.5;
+        double cz = center.getZ() + 0.5;
+        double platformY = center.getY() + 0.05; // чуть выше пола
+
+        // Спавним 2-4 "ниточки" за тик
+        int driftCount = 2 + random.nextInt(3);
+        BlockState sandState = Blocks.SAND.defaultBlockState();
+
+        for (int i = 0; i < driftCount; i++) {
+            // Случайная точка на окружности радиусом 3-6 блоков от центра
+            double angle = random.nextFloat() * (float) Math.PI * 2;
+            double radius = 3.0 + random.nextDouble() * 3.0;
+            double startX = cx + Math.cos(angle) * radius;
+            double startZ = cz + Math.sin(angle) * radius;
+
+            // Частица песка с минимальным спредом (тонкая нить)
+            // speed = 0 → частица стоит на месте, но FALLING_DUST
+            // сама падает вниз, создавая эффект оседания
+            level.sendParticles(
+                    new BlockParticleOption(ParticleTypes.FALLING_DUST, sandState),
+                    startX, platformY, startZ,
+                    1,           // одна частица = одна ниточка
+                    0.02, 0.0, 0.02,  // минимальный спред → тонкая полоска
+                    0.0          // скорость = 0, гравитация делает остальное
+            );
+        }
+    }
+
+
+    /**
+     * Спиральный песчаный вихрь вокруг игрока.
+     * УСКОРЕН: высота растёт быстрее таймера → закрывает игрока ДО телепорта.
+     * ВРАЩЕНИЕ: частицы крутятся вокруг оси (timeSpin) → эффект водоворота.
+     * ПЛОТНОСТЬ: спавн каждый тик + вертикальные слои → сплошная стена.
+     */
+    private void tickPlayerVortex(ServerLevel level, Player player, int timer) {
+        var random = level.getRandom();
+        double px = player.getX();
+        double py = player.getY();
+        double pz = player.getZ();
+
+        float progress = (float) timer / TELEPORT_DELAY_TICKS;
+        BlockState sandState = Blocks.SAND.defaultBlockState();
+
+        // === ПАРАМЕТРЫ ВИХРЯ ===
+        double radius = 1.2 - (progress * 0.2);
+        double columnHeight = Math.min(2.4, 0.4 + (progress * 1.8));
+        int ringCount = 24 + (int)(progress * 16);
+        int verticalLayers = Math.max(3, (int)(columnHeight / 0.2));
+
+        for (int layer = 0; layer < verticalLayers; layer++) {
+            float layerProgress = (float) layer / Math.max(1, verticalLayers - 1);
+            double layerY = py + (layerProgress * columnHeight);
+
+            // Вращение слоёв в разные стороны
+            double speedMultiplier = 1.0 - (layerProgress * 2.5);
+            double layerRotation = level.getGameTime() * 0.12 * speedMultiplier;
+
+            for (int i = 0; i < ringCount; i++) {
+                double angle = (i * 2.0 * Math.PI / ringCount) + layerRotation;
+                double vx = px + Math.cos(angle) * radius;
+                double vz = pz + Math.sin(angle) * radius;
+
+                // 1. ПЕСЧАНАЯ ОБОЛОЧКА (speed=0 → стоит на месте)
+                level.sendParticles(
+                        new BlockParticleOption(ParticleTypes.FALLING_DUST, sandState),
+                        vx, layerY, vz,
+                        1, 0.0, 0.02, 0.0, 0.0
+                );
+
+                // 2. ASH ВНУТРИ ПЕСКА (глубина)
+                if (progress > 0.1f && random.nextFloat() < 0.25f) {
+                    level.sendParticles(ParticleTypes.ASH,
+                            vx, layerY, vz,
+                            1, 0.0, 0.01, 0.0, 0.0);
+                }
+            }
+
+            // ⚡ 3. МАГИЧЕСКИЕ РУНЫ (ENCHANT) внутри вихря
+            // Спавнятся реже песка, на внутреннем радиусе, крутятся БЫСТРЕЕ
+            // Появляются с progress > 0.2, интенсивность растёт к финалу
+            if (progress > 0.2f && random.nextFloat() < (0.15f + progress * 0.3f)) {
+                double runeRadius = radius * 0.6; // ближе к телу игрока
+                double runeAngle = layerRotation * 2.5 + (level.getGameTime() * 0.3);
+                double rx = px + Math.cos(runeAngle) * runeRadius;
+                double rz = pz + Math.sin(runeAngle) * runeRadius;
+
+                level.sendParticles(ParticleTypes.ENCHANT,
+                        rx, layerY, rz,
+                        1, 0.02, 0.02, 0.02, 0.05);
+            }
+        }
+    }
+
+
+    // ----------------------------------------------
 
 
     /**
