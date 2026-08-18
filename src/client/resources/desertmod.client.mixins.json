@@ -3,7 +3,6 @@
 	"package": "net.mxnder.desertmod.client.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
-		"ExampleClientMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
