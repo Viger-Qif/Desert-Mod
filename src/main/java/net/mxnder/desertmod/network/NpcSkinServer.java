@@ -2,6 +2,7 @@ package net.mxnder.desertmod.network;
 
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.mxnder.desertmod.NpcSkins;
@@ -63,6 +64,40 @@ public final class NpcSkinServer {
             });
         });
 
+        // Поворот: крутим голову и тело, чтобы статуя не «смотрела» по-старому
+        ServerPlayNetworking.registerGlobalReceiver(NpcSkinPayloads.SetRotation.TYPE, (payload, context) -> {
+            float yaw = payload.yaw();
+            if (!Float.isFinite(yaw)) return;
+            var server = context.player().level().getServer();
+            if (server == null) return;
+            server.execute(() -> withNpc(server, payload.npcId(), npc -> {
+                npc.setYRot(yaw);
+                npc.setYHeadRot(yaw);
+                npc.setYBodyRot(yaw);
+            }));
+        });
+
+        // Позиция: границы мира и конечность проверяем заранее
+        ServerPlayNetworking.registerGlobalReceiver(NpcSkinPayloads.SetPosition.TYPE, (payload, context) -> {
+            double x = payload.x(), y = payload.y(), z = payload.z();
+            if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)) return;
+            x = Math.max(-29_999_000, Math.min(29_999_000, x));
+            z = Math.max(-29_999_000, Math.min(29_999_000, z));
+            y = Math.max(-64, Math.min(320, y));
+            var server = context.player().level().getServer();
+            if (server == null) return;
+            double fx = x, fy = y, fz = z;
+            server.execute(() -> withNpc(server, payload.npcId(), npc ->
+                    npc.setPos(fx, fy, fz)));
+        });
+
+        // Подтверждённое удаление из редактора: discard в обход любой брони
+        ServerPlayNetworking.registerGlobalReceiver(NpcSkinPayloads.DeleteNpc.TYPE, (payload, context) -> {
+            var server = context.player().level().getServer();
+            if (server == null) return;
+            server.execute(() -> withNpc(server, payload.npcId(), SimpleNpcEntity::discard));
+        });
+
         // Клиент выгрузил свой локальный скин: сохраняем в папку сервера
         // и раздаём всем, кто онлайн. Без этого приёмника аплоад уходил в пустоту.
         ServerPlayNetworking.registerGlobalReceiver(NpcSkinPayloads.Upload.TYPE, (payload, context) -> {
@@ -86,5 +121,21 @@ public final class NpcSkinServer {
                         new NpcSkinPayloads.Sync(skin.name(), skin.data()));
             }
         });
+    }
+
+    private static void withNpc(MinecraftServer server, String uuid,
+                                java.util.function.Consumer<SimpleNpcEntity> action) {
+        UUID id;
+        try {
+            id = UUID.fromString(uuid);
+        } catch (Exception e) {
+            return;
+        }
+        for (ServerLevel level : server.getAllLevels()) {
+            if (level.getEntity(id) instanceof SimpleNpcEntity npc) {
+                action.accept(npc);
+                break;
+            }
+        }
     }
 }

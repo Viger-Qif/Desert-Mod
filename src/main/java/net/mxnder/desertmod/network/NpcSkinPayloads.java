@@ -82,6 +82,52 @@ public final class NpcSkinPayloads {
         }
     }
 
+    /** Клиент -> сервер: «поверни NPC на такой угол». */
+    public record SetRotation(String npcId, float yaw) implements CustomPacketPayload {
+        public static final Type<SetRotation> TYPE =
+                new Type<>(Identifier.fromNamespaceAndPath("desertmod", "npc_editor_set_rot"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, SetRotation> CODEC = StreamCodec.composite(
+                ByteBufCodecs.STRING_UTF8, SetRotation::npcId,
+                ByteBufCodecs.FLOAT, SetRotation::yaw,
+                SetRotation::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
+    /** Клиент -> сервер: «переставь NPC в точку». */
+    public record SetPosition(String npcId, double x, double y, double z) implements CustomPacketPayload {
+        public static final Type<SetPosition> TYPE =
+                new Type<>(Identifier.fromNamespaceAndPath("desertmod", "npc_editor_set_pos"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, SetPosition> CODEC = StreamCodec.composite(
+                ByteBufCodecs.STRING_UTF8, SetPosition::npcId,
+                ByteBufCodecs.DOUBLE, SetPosition::x,
+                ByteBufCodecs.DOUBLE, SetPosition::y,
+                ByteBufCodecs.DOUBLE, SetPosition::z,
+                SetPosition::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
+    /** Клиент -> сервер: «удали этого NPC» (после подтверждения в окне). */
+    public record DeleteNpc(String npcId) implements CustomPacketPayload {
+        public static final Type<DeleteNpc> TYPE =
+                new Type<>(Identifier.fromNamespaceAndPath("desertmod", "npc_editor_delete"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, DeleteNpc> CODEC = StreamCodec.composite(
+                ByteBufCodecs.STRING_UTF8, DeleteNpc::npcId,
+                DeleteNpc::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
     /** Вызвать один раз в DesertMod.onInitialize(). */
     public static void register() {
         PayloadTypeRegistry.serverboundPlay().register(Upload.TYPE, Upload.CODEC); // клиент -> сервер
@@ -89,5 +135,8 @@ public final class NpcSkinPayloads {
         PayloadTypeRegistry.serverboundPlay().register(SetSkin.TYPE, SetSkin.CODEC);      // клиент -> сервер
         PayloadTypeRegistry.clientboundPlay().register(OpenEditor.TYPE, OpenEditor.CODEC); // сервер -> клиент
         PayloadTypeRegistry.serverboundPlay().register(SetAnim.TYPE, SetAnim.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(SetRotation.TYPE, SetRotation.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(SetPosition.TYPE, SetPosition.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(DeleteNpc.TYPE, DeleteNpc.CODEC);
     }
 }
