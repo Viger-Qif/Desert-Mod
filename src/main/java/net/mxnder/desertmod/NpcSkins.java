@@ -6,8 +6,7 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 
 /** Имена скинов NPC: из папки конфигов и встроенные в мод. */
@@ -33,14 +32,17 @@ public final class NpcSkins {
         return names;
     }
 
-    /** Встроенные скины: png-файлы из assets/desertmod/textures/skins/. */
+    /** Встроенные скины: png рядом со стандартной текстурой сущности,
+     *  то есть assets/desertmod/textures/entity/. */
     public static LinkedHashSet<String> builtinNames(ResourceManager rm) {
         LinkedHashSet<String> names = new LinkedHashSet<>();
-        rm.listResources("textures/skins", id -> id.getPath().endsWith(".png"))
+        rm.listResources("textures/entity", id -> id.getPath().endsWith(".png"))
                 .keySet()
                 .forEach(id -> {
-                    String path = id.getPath(); // вид: textures/skins/<имя>.png
-                    names.add(path.substring("textures/skins/".length(), path.length() - ".png".length()));
+                    String path = id.getPath(); // вид: textures/entity/<имя>.png
+                    String name = path.substring("textures/entity/".length(),
+                            path.length() - ".png".length());
+                    if (!name.contains("/")) names.add(name); // подпапки не тянем
                 });
         return names;
     }
@@ -63,5 +65,39 @@ public final class NpcSkins {
         return all;
     }
 
+    /** Строгое имя: латиница/цифры/_/- до 32 символов, иначе null. */
+    public static String sanitizeName(String raw) {
+        if (raw == null) return null;
+        String n = raw.trim().toLowerCase(Locale.ROOT);
+        if (n.isEmpty() || n.length() > 32 || !n.matches("[a-z0-9_-]+")) return null;
+        return n;
+    }
+
+    public static void save(String name, byte[] data) {
+        try {
+            Files.write(skinsDir().resolve(name + ".png"), data);
+        } catch (IOException ignored) {
+        }
+    }
+
+    public record StoredSkin(String name, byte[] data) {}
+
+    /** Все скины из папки конфигов — сервер для рассылки, клиент для аплоада. */
+    public static List<StoredSkin> readAll() {
+        List<StoredSkin> out = new ArrayList<>();
+        Path dir = skinsDir();
+        if (!Files.isDirectory(dir)) return out;
+        try (Stream<Path> files = Files.list(dir)) {
+            files.filter(p -> p.getFileName().toString().endsWith(".png")).forEach(p -> {
+                try {
+                    String n = p.getFileName().toString().replace(".png", "");
+                    out.add(new StoredSkin(n, Files.readAllBytes(p)));
+                } catch (IOException ignored) {
+                }
+            });
+        } catch (IOException ignored) {
+        }
+        return out;
+    }
 
 }

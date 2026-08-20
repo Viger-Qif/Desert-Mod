@@ -10,6 +10,8 @@ public class DesertModClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 
+		NpcSkinClient.init();
+
 		NpcSkinLoader.init();
 		EntityRendererRegistry.register(ModEntities.SIMPLE_NPC, SimpleNpcRenderer::new);
 	}

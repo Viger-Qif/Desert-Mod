@@ -2,6 +2,7 @@ package net.mxnder.desertmod;
 
 import net.fabricmc.api.ModInitializer;
 
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.minecraft.resources.Identifier;
 
@@ -11,6 +12,8 @@ import net.mxnder.desertmod.command.ModCommands;
 import net.mxnder.desertmod.creativemodetab.ModeCreativeModeTabs;
 import net.mxnder.desertmod.entity.SimpleNpcEntity;
 import net.mxnder.desertmod.item.ModItems;
+import net.mxnder.desertmod.network.NpcSkinPayloads;
+import net.mxnder.desertmod.network.NpcSkinServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import net.mxnder.desertmod.entity.ModEntities;
@@ -30,12 +33,17 @@ public class DesertMod implements ModInitializer {
 		TeleportFxScheduler.register();
 		ModEntities.registerModEntities();
 		ModEntities.registerAttributes();
+		NpcSkinPayloads.register();
+		NpcSkinServer.init();
 
 		ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) ->
 				!(entity instanceof SimpleNpcEntity));
 
-		NpcSkinChatHandler.init();
 		SimpleNpcEntity.registerEvents();
-		ModCommands.register();
+
+		// Регистрация команд NPC через Fabric API
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+			NpcCommands.register(dispatcher);
+		});
 	}
 }

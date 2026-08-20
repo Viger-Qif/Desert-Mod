@@ -1,5 +1,7 @@
 package net.mxnder.desertmod.client;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.loader.api.FabricLoader;
@@ -12,10 +14,7 @@ import net.mxnder.desertmod.NpcSkins;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 
 public final class NpcSkinLoader {
@@ -24,6 +23,9 @@ public final class NpcSkinLoader {
     // Зарегистрируем свою текстуру под этим же id — и она подменит ассет.
     private static final Identifier DEFAULT_SKIN_ID =
             Identifier.fromNamespaceAndPath("desertmod", "textures/entity/simple_npc.png");
+
+    private static final Identifier ANIM_FILE = Identifier.fromNamespaceAndPath(
+            "desertmod", "geckolib/animations/entity/simple_npc.animation.json");
 
     /** Вызвать один раз из onInitializeClient. */
     public static void init() {
@@ -64,15 +66,40 @@ public final class NpcSkinLoader {
         DesertMod.LOGGER.info("Загружены скины NPC: конфиг {}, встроенные {}", SKINS.keySet(), BUILTIN);
     }
 
+    /** Все анимации из json модели — клиент видит assets напрямую. */
+    public static List<String> listAnimations() {
+        var res = Minecraft.getInstance().getResourceManager().getResource(ANIM_FILE);
+        if (res.isEmpty()) return List.of();
+        try (var reader = res.get().openAsReader()) {
+            JsonObject root = JsonParser.parseReader(reader).getAsJsonObject();
+            JsonObject anims = root.has("animations") ? root.getAsJsonObject("animations") : null;
+            return anims == null ? List.of() : new ArrayList<>(anims.keySet());
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    /** Установить скин, пришедший по сети. */
+    public static void registerFromBytes(String name, byte[] data) {
+        try (var input = new java.io.ByteArrayInputStream(data)) {
+            NativeImage image = NativeImage.read(input);
+            DynamicTexture texture = new DynamicTexture(() -> "desertmod npc skin " + name, image);
+            Identifier id = Identifier.fromNamespaceAndPath("desertmod", "dyn/" + name);
+            Minecraft.getInstance().getTextureManager().register(id, texture);
+            SKINS.put(name, id);
+        } catch (Exception e) {
+            DesertMod.LOGGER.warn("Не смог установить скин из сети: {}", name, e);
+        }
+    }
+
     private static final Set<String> BUILTIN = new LinkedHashSet<>();
     // в loadSkins(mc), после блока с папкой конфигов:
 
-    /** Текстура по имени скина; null, если такого скина нет. */
     public static Identifier get(String name) {
         Identifier dyn = SKINS.get(name);   // папка конфигов — приоритет
         if (dyn != null) return dyn;
-        if (BUILTIN.contains(name))         // встроенный скин из ассетов мода
-            return Identifier.fromNamespaceAndPath("desertmod", "textures/skins/" + name + ".png");
+        if (BUILTIN.contains(name))         // встроенный скин рядом со стандартной текстурой
+            return Identifier.fromNamespaceAndPath("desertmod", "textures/entity/" + name + ".png");
         return null;
     }
 
