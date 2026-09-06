@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -13,9 +14,7 @@ import net.mxnder.desertmod.entity.ModEntities;
 import net.mxnder.desertmod.entity.SimpleNpcEntity;
 import net.mxnder.desertmod.network.NpcSkinPayloads;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public final class SceneManager {
 
@@ -24,6 +23,8 @@ public final class SceneManager {
                          float yaw, float pitch) {}
 
     private static final List<Scene> active = new ArrayList<>();
+
+    private static final Map<UUID, Long> lastHintMs = new HashMap<>();
 
     public static void init() {
         // точки грузятся на старте сервера, список раздаётся зашедшим
@@ -77,8 +78,25 @@ public final class SceneManager {
         });
 
         ServerTickEvents.END_SERVER_TICK.register(server -> {
-            if (active.isEmpty()) return;
             long now = System.currentTimeMillis();
+
+            // Подсказка над хотбаром: сервер сам следит, кто в радиусе точки,
+            // и шлёт actionbar прямым пакетом — без команд, значит без спама
+            // «Отображение надписи…» в чате и логе. Работает у всех в мультиплеере.
+            for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+                boolean inScene = active.stream().anyMatch(s -> s.player().equals(p.getUUID()));
+                if (inScene) continue; // во время сцены подсказка не мозолит
+                if (ScenePoints.nearestForPlayer(p, ScenePoints.TRIGGER_RADIUS) != null
+                        && now - lastHintMs.getOrDefault(p.getUUID(), 0L) > 2000) {
+                    lastHintMs.put(p.getUUID(), now);
+                    // 26.2: если пакет подчеркнётся — поищи в автокомплите пакет
+                    // со словом ActionBar в имени
+                    p.connection.send(new ClientboundSetActionBarTextPacket(
+                            Component.literal("§eНажмите G для взаимодействия")));
+                }
+            }
+
+            if (active.isEmpty()) return;
             active.removeIf(s -> {
                 if (now < s.endMs()) return false;
                 finish(server, s);

@@ -1,7 +1,9 @@
 // 26.2	-999999999-01-01T00:00:00	Desert Mod/DesertMod Recipes
 7da9a703180aefe2f4e9c4befe0350db2838d7b0 data/desertmod/advancement/recipes/decorations/kifi_brazier.json
+035985b9aeaa01935526312a2631841734b5cefd data/desertmod/advancement/recipes/misc/blessed_kifi.json
 a909761ab24f839e03b6f0821a528213ea1a9267 data/desertmod/advancement/recipes/misc/kifi_raw.json
-2c5cea427ac094e33acb2f0fe4eb30c14c26a26e data/desertmod/advancement/recipes/misc/kifinull_kifi_raw.json
+c8b94f1256c8806512d6cbd9c4536317fd623e13 data/desertmod/advancement/recipes/misc/kifinull_blessed_kifi.json
+06ce847560c1d28bb557c4bb19d50e30735979df data/desertmod/recipe/blessed_kifi.json
 7e48aaeacc302ccc8440fdf45eeb88a0595c9f8c data/desertmod/recipe/kifi_brazier.json
 3be6576656692846a4d3ae9129f25073e7626468 data/desertmod/recipe/kifi_raw.json
-f4447ab634381e17c45fe1a602a7ee19068ddc3a data/desertmod/recipe/kifinull_kifi_raw.json
+36a9e0a2cf287174f3694e91d75f6db1756536c8 data/desertmod/recipe/kifinull_blessed_kifi.json

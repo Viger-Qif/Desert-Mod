@@ -3,6 +3,7 @@
 	"package": "net.mxnder.desertmod.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
+		"BlessedFuelMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

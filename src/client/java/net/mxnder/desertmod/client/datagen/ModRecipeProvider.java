@@ -29,15 +29,15 @@ public class ModRecipeProvider extends FabricRecipeProvider {
             public void buildRecipes() {
 
                 oreCooking(
-                        SmokingRecipe::new,                    // factory
-                        List.of(ModItems.KIFI_RAW),          // smeltables
-                        RecipeCategory.MISC,                    // craftingCategory
-                        CookingBookCategory.MISC,               // cookingCategory
-                        ModItems.KIFI,        // result
-                        0.35f,                                  // experience
-                        200,                                    // cookingTime (в тиках)
-                        "desertmod",                            // group
-                        null                                    // fromDesc (можно null)
+                        SmokingRecipe::new,
+                        List.of(ModItems.BLESSED_KIFI),
+                        RecipeCategory.MISC,
+                        CookingBookCategory.MISC,
+                        ModItems.KIFI,
+                        0.7f,   // опыт повыше — путь длиннее
+                        200,
+                        "desertmod",
+                        null
                 );
 
                 shaped(RecipeCategory.MISC, ModItems.KIFI_RAW)
@@ -69,7 +69,21 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                         .unlockedBy("has_fire_charge", has(Items.FIRE_CHARGE))
                         .unlockedBy("has_iron", has(Items.IRON_INGOT))
                         .save(output);
+
+                // сырое кифи, обложенное 4 аметистами, — освещённое
+                shaped(RecipeCategory.MISC, ModItems.BLESSED_KIFI)
+                        .pattern(" A ")
+                        .pattern("ARA")
+                        .pattern(" A ")
+                        .define('R', ModItems.KIFI_RAW)
+                        .define('A', Items.AMETHYST_SHARD)
+                        .unlockedBy("has_kifi_raw", has(ModItems.KIFI_RAW))
+                        .unlockedBy("has_amethyst", has(Items.AMETHYST_SHARD))
+                        .group("desertmod")
+                        .save(output);
             }
+
+
         };
     }
 

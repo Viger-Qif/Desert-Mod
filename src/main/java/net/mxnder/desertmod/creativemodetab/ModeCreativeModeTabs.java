@@ -13,7 +13,7 @@ public class ModeCreativeModeTabs {
                                 output.accept(ModItems.KIFI);
                                 output.accept(ModItems.ICON_TAB);
                                 output.accept(ModItems.KIFI_RAW);
-
+                                output.accept(ModItems.BLESSED_KIFI);
 
                             })
                             .build());

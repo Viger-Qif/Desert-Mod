@@ -19,6 +19,7 @@ public class ModItems {
     public static final Item ICON_TAB = registerItem("icon_tab", Item::new);
     public static final Item KIFI = registerItem("kifi", Item::new);
     public static final Item KIFI_RAW = registerItem("kifi_raw", Item::new);
+    public static final Item BLESSED_KIFI = registerItem("blessed_kifi", Item::new);
 
     // предмет-блок для жаровни (используем то же имя, что и у блока)
     public static final Item KIFI_BRAZIER = registerItem("kifi_brazier",

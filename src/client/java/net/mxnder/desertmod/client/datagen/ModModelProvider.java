@@ -16,18 +16,13 @@ public class ModModelProvider extends FabricModelProvider {
 
     @Override
     public void generateBlockStateModels(BlockModelGenerators blockModelGenerators) {
-        // Простой куб без вариантов, blockstate + block-модель + item-модель
-        // генерируются автоматически из одной текстуры assets/desertmod/textures/block/kifi_brazier.png
-        // ⚠ ПРОВЕРИТЬ: имя метода для "обычного полного куба" может отличаться в вашей версии
-        // (createTrivialCube / createTrivialBlock / cubeAll — смотрите BlockModelGenerators в вашем маппинге).
-        blockModelGenerators.createTrivialCube(ModBlocks.KIFI_BRAZIER);
     }
 
     @Override
     public void generateItemModels(ItemModelGenerators itemModelGenerators) {
         itemModelGenerators.generateFlatItem(ModItems.KIFI, ModelTemplates.FLAT_ITEM);
         itemModelGenerators.generateFlatItem(ModItems.KIFI_RAW, ModelTemplates.FLAT_ITEM);
-
+        itemModelGenerators.generateFlatItem(ModItems.BLESSED_KIFI, ModelTemplates.FLAT_ITEM);
         itemModelGenerators.generateFlatItem(ModItems.ICON_TAB, ModelTemplates.FLAT_ITEM);
         // KIFI_BRAZIER не нужен здесь: его item-модель (block/kifi_brazier) генерируется
         // автоматически через createTrivialCube() выше.

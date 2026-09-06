@@ -6,8 +6,6 @@ import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.client.gui.screens.Overlay;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.mxnder.desertmod.DesertMod;
 import net.mxnder.desertmod.NpcSkins;
@@ -15,7 +13,6 @@ import net.mxnder.desertmod.client.gui.NpcEditorScreen;
 import net.mxnder.desertmod.client.scene.SceneManagerClient;
 import net.mxnder.desertmod.client.scene.ScenePointsClient;
 import net.mxnder.desertmod.network.NpcSkinPayloads;
-import net.mxnder.desertmod.scene.SceneLayout;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
@@ -54,16 +51,6 @@ public final class NpcSkinClient {
             }
         });
 
-        // сцена стартовала: точка приезжает в пакете
-        ClientPlayNetworking.registerGlobalReceiver(NpcSkinPayloads.SceneStart.TYPE, (payload, context) -> {
-            context.client().execute(() -> SceneManagerClient.startScene(
-                    payload.anim(), payload.x(), payload.y(), payload.z(), payload.yaw()));
-        });
-
-        ClientPlayNetworking.registerGlobalReceiver(NpcSkinPayloads.SceneEnd.TYPE, (payload, context) -> {
-            context.client().execute(() -> SceneManagerClient.endScene());
-        });
-
         // список точек пришёл — кладём в клиентское хранилище
         ClientPlayNetworking.registerGlobalReceiver(NpcSkinPayloads.ScenePointsSync.TYPE, (payload, context) -> {
             context.client().execute(() -> {
@@ -76,10 +63,14 @@ public final class NpcSkinClient {
             });
         });
 
-        // сцена стартовала: точка приезжает в пакете
+        // сцена стартовала: точка приезжает в пакете (приёмник один, без дублей)
         ClientPlayNetworking.registerGlobalReceiver(NpcSkinPayloads.SceneStart.TYPE, (payload, context) -> {
             context.client().execute(() -> SceneManagerClient.startScene(
                     payload.anim(), payload.x(), payload.y(), payload.z(), payload.yaw()));
+        });
+
+        ClientPlayNetworking.registerGlobalReceiver(NpcSkinPayloads.SceneEnd.TYPE, (payload, context) -> {
+            context.client().execute(() -> SceneManagerClient.endScene());
         });
     }
 
@@ -95,17 +86,9 @@ public final class NpcSkinClient {
 
         ClientTickEvents.END_CLIENT_TICK.register(mc -> {
             if (mc.player == null) return;
-            // Подсказка — косметика: показываем, только если список точек доехал
-            ScenePointsClient.Point near =
-                    SceneManagerClient.isActive() ? null : ScenePointsClient.nearest(mc);
-            if (near != null && System.currentTimeMillis() - lastHintMs > 4000) {
-                lastHintMs = System.currentTimeMillis();
-                mc.player.connection.sendCommand(
-                        "title @s actionbar {\"text\":\"Нажми G — начать сцену кузнеца\",\"color\":\"yellow\"}");
-            }
-
-            // G шлётся ВСЕГДА: решает сервер. Нет точки — он сам скажет в чат,
-            // есть — запустит сцену. Клиент больше не может «проглотить» нажатие.
+            // Подсказки здесь больше нет: сервер сам следит за радиусом
+            // и шлёт actionbar тихим пакетом — без команд и без спама.
+            // G шлётся всегда: решает сервер, есть ли рядом точка.
             while (key.consumeClick()) {
                 if (!SceneManagerClient.isActive()) {
                     ClientPlayNetworking.send(new NpcSkinPayloads.SceneTrigger("smith_strike"));
@@ -123,6 +106,4 @@ public final class NpcSkinClient {
             }
         });
     }
-    private static long lastHintMs = 0;
-
 }
