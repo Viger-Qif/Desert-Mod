@@ -1,13 +1,15 @@
 {
-	"required": true,
-	"package": "net.mxnder.desertmod.client.mixin",
+	"required": false,
+	"minVersion": "0.8",
+	"package": "net.mxnder.desertmod.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
+		"GuiMixin",
+		"ItemInHandRendererMixin",
+		"LocalPlayerMixin",
+		"HandItemMixin"
 	],
 	"injectors": {
-		"defaultRequire": 1
-	},
-	"overwrites": {
-		"requireAnnotations": true
+		"defaultRequire": 0
 	}
 }

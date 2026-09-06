@@ -1,0 +1,14 @@
+{
+  "name": "smith_strike",
+  "anim": "smith_strike",
+  "duration": 4.0417,
+  "keys": [
+    { "t": 0.0,  "fwd": 0, "strafe": 0, "up": 0, "yaw": 0, "pitch": 0 },
+    { "t": 1.5,  "fwd": 0, "strafe": 0, "up": 0, "yaw": 4, "pitch": -2 },
+    { "t": 1.75, "fwd": 0, "strafe": 0, "up": 0, "yaw": 2, "pitch": 8 },
+    { "t": 2.05, "fwd": 0, "strafe": 0, "up": 0, "yaw": 0, "pitch": 7 },
+    { "t": 2.6,  "fwd": 0, "strafe": 0, "up": 0, "yaw": 0, "pitch": 3 },
+    { "t": 3.5,  "fwd": 0, "strafe": 0, "up": 0, "yaw": 0, "pitch": 0 },
+    { "t": 4.04, "fwd": 0, "strafe": 0, "up": 0, "yaw": 0, "pitch": 0 }
+  ]
+}

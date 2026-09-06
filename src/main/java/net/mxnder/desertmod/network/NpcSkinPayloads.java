@@ -128,6 +128,35 @@ public final class NpcSkinPayloads {
         }
     }
 
+    /** Клиент -> сервер: «запусти сцену на мне». */
+    public record SceneTrigger(String anim) implements CustomPacketPayload {
+        public static final Type<SceneTrigger> TYPE =
+                new Type<>(Identifier.fromNamespaceAndPath("desertmod", "scene_trigger"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, SceneTrigger> CODEC =
+                StreamCodec.composite(ByteBufCodecs.STRING_UTF8, SceneTrigger::anim, SceneTrigger::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
+    public record SceneStart(String anim) implements CustomPacketPayload {
+        public static final Type<SceneStart> TYPE =
+                new Type<>(Identifier.fromNamespaceAndPath("desertmod", "scene_start"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, SceneStart> CODEC =
+                StreamCodec.composite(ByteBufCodecs.STRING_UTF8, SceneStart::anim, SceneStart::new);
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
+    public record SceneEnd() implements CustomPacketPayload {
+        public static final Type<SceneEnd> TYPE =
+                new Type<>(Identifier.fromNamespaceAndPath("desertmod", "scene_end"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, SceneEnd> CODEC =
+                StreamCodec.unit(new SceneEnd());
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
     /** Вызвать один раз в DesertMod.onInitialize(). */
     public static void register() {
         PayloadTypeRegistry.serverboundPlay().register(Upload.TYPE, Upload.CODEC); // клиент -> сервер
@@ -138,5 +167,8 @@ public final class NpcSkinPayloads {
         PayloadTypeRegistry.serverboundPlay().register(SetRotation.TYPE, SetRotation.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(SetPosition.TYPE, SetPosition.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(DeleteNpc.TYPE, DeleteNpc.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(SceneTrigger.TYPE, SceneTrigger.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(SceneStart.TYPE, SceneStart.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(SceneEnd.TYPE, SceneEnd.CODEC);
     }
 }
