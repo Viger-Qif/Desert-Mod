@@ -15,6 +15,7 @@ import net.mxnder.desertmod.item.ModItems;
 import net.mxnder.desertmod.network.NpcSkinPayloads;
 import net.mxnder.desertmod.network.NpcSkinServer;
 import net.mxnder.desertmod.scene.SceneManager;
+import net.mxnder.desertmod.scene.ScenePointCommands;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import net.mxnder.desertmod.entity.ModEntities;
@@ -37,6 +38,7 @@ public class DesertMod implements ModInitializer {
 		NpcSkinPayloads.register();
 		NpcSkinServer.init();
 		SceneManager.init();
+		ScenePointCommands.register();
 
 		ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) ->
 				!(entity instanceof SimpleNpcEntity));

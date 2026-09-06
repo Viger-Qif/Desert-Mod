@@ -64,17 +64,29 @@ public final class SceneManagerClient {
         });
     }
 
-    public static void startScene(String name) {
+    public static void startScene(String name, double ax, double ay, double az, float yaw) {
         var mc = Minecraft.getInstance();
         if (mc.player == null) return;
         scene = SceneFile.load(name);
 
-        double[] cam = SceneLayout.cameraWorld();
-        mc.player.setPos(cam[0], cam[1], cam[2]);
-        mc.player.setYRot(SceneLayout.cameraYaw());
+        // NPC: якорь + полблока в сторону взгляда (та же математика, что на сервере)
+        double fx = -Math.sin(yaw * Math.PI / 180.0);
+        double fz =  Math.cos(yaw * Math.PI / 180.0);
+        double nx = ax + 0.5 * fx;
+        double nz = az + 0.5 * fz;
+
+        // камера — от позиции NPC, в его локальных осях (CAM_* из SceneLayout)
+        double cx = nx + SceneLayout.CAM_FWD * (-fx) + SceneLayout.CAM_RIGHT * (-fz);
+        double cy = ay + SceneLayout.CAM_UP;
+        double cz = nz + SceneLayout.CAM_FWD * fz + SceneLayout.CAM_RIGHT * (-fx);
+        float cyaw = yaw + SceneLayout.CAM_YAW_DELTA;
+
+        mc.player.setPos(cx, cy, cz);
+        mc.player.setDeltaMovement(0, 0, 0);
+        mc.player.setYRot(cyaw);
         mc.player.setXRot(SceneLayout.CAM_PITCH);
-        startX = cam[0]; startY = cam[1]; startZ = cam[2];
-        startYaw = SceneLayout.cameraYaw();
+        startX = cx; startY = cy; startZ = cz;
+        startYaw = cyaw;
         startPitch = SceneLayout.CAM_PITCH;
 
         sceneStartMs = System.currentTimeMillis();

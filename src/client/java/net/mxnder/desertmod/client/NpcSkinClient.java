@@ -9,9 +9,11 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.screens.Overlay;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.mxnder.desertmod.DesertMod;
 import net.mxnder.desertmod.NpcSkins;
 import net.mxnder.desertmod.client.gui.NpcEditorScreen;
 import net.mxnder.desertmod.client.scene.SceneManagerClient;
+import net.mxnder.desertmod.client.scene.ScenePointsClient;
 import net.mxnder.desertmod.network.NpcSkinPayloads;
 import net.mxnder.desertmod.scene.SceneLayout;
 import org.lwjgl.glfw.GLFW;
@@ -52,49 +54,75 @@ public final class NpcSkinClient {
             }
         });
 
-        // Сцена стартовала: передаём режиссёру ИМЯ сцены —
-        // по нему он прочитает ключи камеры из assets/desertmod/scenes/<name>.json
+        // сцена стартовала: точка приезжает в пакете
         ClientPlayNetworking.registerGlobalReceiver(NpcSkinPayloads.SceneStart.TYPE, (payload, context) -> {
-            context.client().execute(() -> SceneManagerClient.startScene(payload.anim()));
+            context.client().execute(() -> SceneManagerClient.startScene(
+                    payload.anim(), payload.x(), payload.y(), payload.z(), payload.yaw()));
         });
 
         ClientPlayNetworking.registerGlobalReceiver(NpcSkinPayloads.SceneEnd.TYPE, (payload, context) -> {
             context.client().execute(() -> SceneManagerClient.endScene());
         });
-    }
 
-    public static void initKeys() {
-        KeyMapping key = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-                "key.desertmod.scene",
-                InputConstants.Type.KEYSYM,
-                GLFW.GLFW_KEY_G,
-                new KeyMapping.Category(Identifier.fromNamespaceAndPath("desertmod", "scene"))));
-        ClientTickEvents.END_CLIENT_TICK.register(mc -> {
-            boolean near = mc.player != null
-                    && mc.level != null
-                    && mc.level.dimension() == SceneLayout.SCENE_DIM
-                    && !SceneManagerClient.isActive()
-                    && SceneLayout.isNear(mc.player.getX(), mc.player.getY(), mc.player.getZ());
+        // список точек пришёл — кладём в клиентское хранилище
+        ClientPlayNetworking.registerGlobalReceiver(NpcSkinPayloads.ScenePointsSync.TYPE, (payload, context) -> {
+            context.client().execute(() -> {
+                var list = payload.points().stream()
+                        .map(d -> new ScenePointsClient.Point(
+                                d.id(), d.x(), d.y(), d.z(), d.yaw(), d.dim(), d.scene()))
+                        .toList();
+                ScenePointsClient.set(list);
+                DesertMod.LOGGER.info("[client] Список точек сцен получен: {}", list.size());
+            });
+        });
 
-            // Подсказка над хотбаром: actionbar-заголовок — надёжный во всех версиях способ.
-            // Обновляем раз в 4 секунды, пока стоишь рядом (и сразу при подходе),
-            // чтобы надпись не гасла. В мультиплеере без прав она просто не покажется —
-            // кнопка и так гейтится сервером, подсказка чисто косметическая.
-            if (near && System.currentTimeMillis() - lastHintMs > 4000) {
-                lastHintMs = System.currentTimeMillis();
-                mc.player.connection.sendCommand(
-                        "title @s actionbar {\"text\":\"Нажми G — начать сцену кузнеца\"}");
-            }
-
-            while (key.consumeClick()) {
-                if (near) {
-                    ClientPlayNetworking.send(new NpcSkinPayloads.SceneTrigger("smith_strike"));
-                }
-                // вне радиуса нажатие съедается — кнопка «не существует»
-            }
+        // сцена стартовала: точка приезжает в пакете
+        ClientPlayNetworking.registerGlobalReceiver(NpcSkinPayloads.SceneStart.TYPE, (payload, context) -> {
+            context.client().execute(() -> SceneManagerClient.startScene(
+                    payload.anim(), payload.x(), payload.y(), payload.z(), payload.yaw()));
         });
     }
 
-    // когда в последний раз освежали подсказку
+    public static void initKeys() {
+        KeyMapping.Category cat =
+                new KeyMapping.Category(Identifier.fromNamespaceAndPath("desertmod", "scene"));
+        KeyMapping key = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+                "key.desertmod.scene", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, cat));
+        KeyMapping addKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+                "key.desertmod.scene_add", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_H, cat));
+        KeyMapping delKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+                "key.desertmod.scene_del", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_I, cat));
+
+        ClientTickEvents.END_CLIENT_TICK.register(mc -> {
+            if (mc.player == null) return;
+            // Подсказка — косметика: показываем, только если список точек доехал
+            ScenePointsClient.Point near =
+                    SceneManagerClient.isActive() ? null : ScenePointsClient.nearest(mc);
+            if (near != null && System.currentTimeMillis() - lastHintMs > 4000) {
+                lastHintMs = System.currentTimeMillis();
+                mc.player.connection.sendCommand(
+                        "title @s actionbar {\"text\":\"Нажми G — начать сцену кузнеца\",\"color\":\"yellow\"}");
+            }
+
+            // G шлётся ВСЕГДА: решает сервер. Нет точки — он сам скажет в чат,
+            // есть — запустит сцену. Клиент больше не может «проглотить» нажатие.
+            while (key.consumeClick()) {
+                if (!SceneManagerClient.isActive()) {
+                    ClientPlayNetworking.send(new NpcSkinPayloads.SceneTrigger("smith_strike"));
+                }
+            }
+            while (addKey.consumeClick()) {
+                if (!SceneManagerClient.isActive()) {
+                    ClientPlayNetworking.send(new NpcSkinPayloads.ScenePointAdd("smith_strike"));
+                }
+            }
+            while (delKey.consumeClick()) {
+                if (!SceneManagerClient.isActive()) {
+                    ClientPlayNetworking.send(new NpcSkinPayloads.ScenePointRemove());
+                }
+            }
+        });
+    }
     private static long lastHintMs = 0;
+
 }

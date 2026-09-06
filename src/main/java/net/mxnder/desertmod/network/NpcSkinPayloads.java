@@ -7,7 +7,9 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public final class NpcSkinPayloads {
 
@@ -141,12 +143,23 @@ public final class NpcSkinPayloads {
         }
     }
 
-    public record SceneStart(String anim) implements CustomPacketPayload {
+    /** Сервер -> клиент: сцена стартовала, вот точка и анимация. */
+    public record SceneStart(String anim, double x, double y, double z, float yaw) implements CustomPacketPayload {
         public static final Type<SceneStart> TYPE =
                 new Type<>(Identifier.fromNamespaceAndPath("desertmod", "scene_start"));
         public static final StreamCodec<RegistryFriendlyByteBuf, SceneStart> CODEC =
-                StreamCodec.composite(ByteBufCodecs.STRING_UTF8, SceneStart::anim, SceneStart::new);
-        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+                StreamCodec.composite(
+                        ByteBufCodecs.STRING_UTF8, SceneStart::anim,
+                        ByteBufCodecs.DOUBLE, SceneStart::x,
+                        ByteBufCodecs.DOUBLE, SceneStart::y,
+                        ByteBufCodecs.DOUBLE, SceneStart::z,
+                        ByteBufCodecs.FLOAT, SceneStart::yaw,
+                        SceneStart::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
     }
 
     public record SceneEnd() implements CustomPacketPayload {
@@ -154,6 +167,54 @@ public final class NpcSkinPayloads {
                 new Type<>(Identifier.fromNamespaceAndPath("desertmod", "scene_end"));
         public static final StreamCodec<RegistryFriendlyByteBuf, SceneEnd> CODEC =
                 StreamCodec.unit(new SceneEnd());
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
+    /** Элемент списка точек (для сети). */
+    public record ScenePointDto(UUID id, double x, double y, double z,
+                                float yaw, String dim, String scene) {
+        static void write(RegistryFriendlyByteBuf buf, ScenePointDto d) {
+            buf.writeLong(d.id().getMostSignificantBits());
+            buf.writeLong(d.id().getLeastSignificantBits());
+            buf.writeDouble(d.x()); buf.writeDouble(d.y()); buf.writeDouble(d.z());
+            buf.writeFloat(d.yaw());
+            buf.writeUtf(d.dim());
+            buf.writeUtf(d.scene());
+        }
+        static ScenePointDto read(RegistryFriendlyByteBuf buf) {
+            return new ScenePointDto(new UUID(buf.readLong(), buf.readLong()),
+                    buf.readDouble(), buf.readDouble(), buf.readDouble(),
+                    buf.readFloat(), buf.readUtf(), buf.readUtf());
+        }
+    }
+
+    /** Сервер -> клиент: весь список точек. */
+    public record ScenePointsSync(List<ScenePointDto> points) implements CustomPacketPayload {
+        public static final Type<ScenePointsSync> TYPE =
+                new Type<>(Identifier.fromNamespaceAndPath("desertmod", "scene_points_sync"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, ScenePointsSync> CODEC =
+                StreamCodec.composite(
+                        ByteBufCodecs.collection(ArrayList::new,
+                                StreamCodec.of(ScenePointDto::write, ScenePointDto::read)),
+                        ScenePointsSync::points, ScenePointsSync::new);
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
+    /** Клиент -> сервер: создай точку ТАМ, ГДЕ Я СТОЮ (координаты сервер возьмёт сам). */
+    public record ScenePointAdd(String scene) implements CustomPacketPayload {
+        public static final Type<ScenePointAdd> TYPE =
+                new Type<>(Identifier.fromNamespaceAndPath("desertmod", "scene_point_add"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, ScenePointAdd> CODEC =
+                StreamCodec.composite(ByteBufCodecs.STRING_UTF8, ScenePointAdd::scene, ScenePointAdd::new);
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
+    /** Клиент -> сервер: удали ближайшую ко мне точку. */
+    public record ScenePointRemove() implements CustomPacketPayload {
+        public static final Type<ScenePointRemove> TYPE =
+                new Type<>(Identifier.fromNamespaceAndPath("desertmod", "scene_point_remove"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, ScenePointRemove> CODEC =
+                StreamCodec.unit(new ScenePointRemove());
         @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
@@ -170,5 +231,8 @@ public final class NpcSkinPayloads {
         PayloadTypeRegistry.serverboundPlay().register(SceneTrigger.TYPE, SceneTrigger.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(SceneStart.TYPE, SceneStart.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(SceneEnd.TYPE, SceneEnd.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(ScenePointsSync.TYPE, ScenePointsSync.CODEC);   // сервер -> клиент: список точек
+        PayloadTypeRegistry.serverboundPlay().register(ScenePointAdd.TYPE, ScenePointAdd.CODEC);       // клиент -> сервер: создать точку здесь
+        PayloadTypeRegistry.serverboundPlay().register(ScenePointRemove.TYPE, ScenePointRemove.CODEC); // клиент -> сервер: удалить ближайшую
     }
 }
