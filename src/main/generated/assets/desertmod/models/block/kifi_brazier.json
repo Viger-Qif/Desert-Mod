@@ -3,8 +3,8 @@
 	"credit": "Made with Blockbench",
 	"parent": "minecraft:block/block",
 	"textures": {
-		"2": "desertmod:block/kifi_brazier_texture",
-		"particle": "desertmod:block/kifi_brazier_texture"
+		"2": "desertmod:block/kifi_brazier",
+		"particle": "desertmod:block/kifi_brazier"
 	},
 	"elements": [
 		{
