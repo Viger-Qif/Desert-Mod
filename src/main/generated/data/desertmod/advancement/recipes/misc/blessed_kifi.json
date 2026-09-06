@@ -1,0 +1,43 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_amethyst": {
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:amethyst_shard"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_kifi_raw": {
+      "conditions": {
+        "items": [
+          {
+            "items": "desertmod:kifi_raw"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "desertmod:blessed_kifi"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_kifi_raw",
+      "has_amethyst"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "desertmod:blessed_kifi"
+    ]
+  }
+}

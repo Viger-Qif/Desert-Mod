@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "group": "desertmod",
+  "key": {
+    "A": "minecraft:amethyst_shard",
+    "R": "desertmod:kifi_raw"
+  },
+  "pattern": [
+    " A ",
+    "ARA",
+    " A "
+  ],
+  "result": {
+    "id": "desertmod:blessed_kifi"
+  }
+}

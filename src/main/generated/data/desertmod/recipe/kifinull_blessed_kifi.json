@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smoking",
+  "cookingtime": 200,
+  "experience": 0.7,
+  "group": "desertmod",
+  "ingredient": "desertmod:blessed_kifi",
+  "result": {
+    "id": "desertmod:kifi"
+  }
+}
