@@ -118,6 +118,9 @@ public final class SceneManager {
         dbl.setYHeadRot(pt.yaw());
         dbl.setYBodyRot(pt.yaw());
         dbl.setAnimName(scene);
+        // дублёр «надевает» скин игрока, который играет сцену:
+        // клиент по приставке player: подставит его живую текстуру
+        dbl.setSkinName("player:" + player.getUUID());
         level.addFreshEntity(dbl);
 
         // камера — от позиции NPC, в его локальных осях (CAM_* из SceneLayout)

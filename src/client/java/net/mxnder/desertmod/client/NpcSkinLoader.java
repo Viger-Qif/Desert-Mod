@@ -8,6 +8,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Player;
 import net.mxnder.desertmod.DesertMod;
 import net.mxnder.desertmod.NpcSkins;
 
@@ -96,6 +97,31 @@ public final class NpcSkinLoader {
     // в loadSkins(mc), после блока с папкой конфигов:
 
     public static Identifier get(String name) {
+        // Дублёр сцены: скин — живая текстура игрока-владельца.
+        // Владелец присутствует в уровне у каждого клиента (невидим, но есть),
+        // поэтому работает и у тебя в F5, и у других в мультиплеере.
+        if (name != null && name.startsWith("player:")) {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.level != null) {
+                try {
+                    Player owner = mc.level.getPlayerByUUID(UUID.fromString(name.substring(7)));
+                    if (owner != null) {
+                        // 26.2: у Player скина нет — он живёт в PlayerInfo (список игроков).
+                        // Загружен у каждого клиента и для себя, и для других,
+                        // поэтому работает и в F5, и в мультиплеере.
+                        var info = mc.getConnection() != null
+                                ? mc.getConnection().getPlayerInfo(owner.getUUID()) : null;
+                        if (info != null) {
+                            // если getSkin() подчеркнётся — напечатай «info.get» и возьми из
+                            // автокомплита скиновый метод (getSkin / getSkinLocation / getSkinData);
+                            // если он вернёт сразу Identifier — убери .texture()
+                            return info.getSkin().body().texturePath();
+                        }
+                    }
+                } catch (Exception ignored) { }
+            }
+            return getDefault(); // владелец не найден — дефолт, чтобы дублёр не остался лысым
+        }
         Identifier dyn = SKINS.get(name);   // папка конфигов — приоритет
         if (dyn != null) return dyn;
         if (BUILTIN.contains(name))         // встроенный скин рядом со стандартной текстурой

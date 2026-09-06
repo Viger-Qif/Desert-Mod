@@ -31,6 +31,11 @@ public final class SceneManagerClient {
             float elapsed = (System.currentTimeMillis() - sceneStartMs) / 1000f;
             if (elapsed >= scene.duration || scene.keys.size() < 2) return;
 
+            // Первое лицо — жёстко по траектории.
+            // Третье лицо — режиссёр не трогает повороты, мышь крутит свободно.
+            boolean firstPerson = mc.options.getCameraType().isFirstPerson();
+            // если в 26.2 подчеркнётся — поищи в options метод, возвращающий тип камеры
+
             SceneFile.Key a = scene.keys.get(0);
             SceneFile.Key b = a;
             for (int i = 0; i < scene.keys.size() - 1; i++) {
@@ -47,9 +52,7 @@ public final class SceneManagerClient {
             float yawD = Mth.lerp(f, a.yaw(), b.yaw());
             float pitD = Mth.lerp(f, a.pitch(), b.pitch());
 
-            // Позицию трогаем, ТОЛЬКО если ключи реально двигают камеру.
-            // Стоячую сцену не надо каждый кадр пихать setPos'ом:
-            // серверная физика «стоит на земле» и воюет с нами — это и была тряска.
+            // позиция едет в обоих режимах: в F5 ты орбитируешь вокруг движущейся точки
             if (fwd != 0f || str != 0f || up != 0f) {
                 double sinY = Math.sin(startYaw * Math.PI / 180.0);
                 double cosY = Math.cos(startYaw * Math.PI / 180.0);
@@ -58,9 +61,11 @@ public final class SceneManagerClient {
                 mc.player.setPos(startX + dx, startY + up, startZ + dz);
             }
 
-            // Повороты сервер не «чинит» — их ставим каждый кадр, это безопасно
-            mc.player.setYRot(startYaw + yawD);
-            mc.player.setXRot(startPitch + pitD);
+            // а вот повороты — только для первого лица
+            if (firstPerson) {
+                mc.player.setYRot(startYaw + yawD);
+                mc.player.setXRot(startPitch + pitD);
+            }
         });
     }
 
